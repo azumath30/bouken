@@ -137,7 +137,7 @@
     </main>
 
     <footer class="w-full max-w-4xl text-center text-xs text-slate-500 pt-2 border-t border-slate-800">
-        <p>Arduino 10ボタンゲーム v1.2 - 2桁モード対応</p>
+        <p>Arduino 10ボタンゲーム v1.3 - 2桁モード修正版</p>
     </footer>
 
     <script>
@@ -166,32 +166,27 @@
         const modeTitleBadge = document.getElementById('modeTitleBadge');
         const rulesHintBox = document.getElementById('rulesHintBox');
 
-        // Game mode: 'MODE1' (1-10) or 'MODE2' (2-digit: units 1-9 used, tens 0-9)
         let currentMode = 'MODE1';
 
-        // Game state
-        let gameState = 'IDLE'; // 'IDLE', 'PLAYING', 'ROUND_CLEAR'
+        let gameState = 'IDLE';
         let currentScore = 0;
         let currentRound = 0;
         const maxRounds = 10;
         let questionQueue = [];
-        let targetNum = 1; // Can be number or string representation for 2-digit mode
-        let currentDigitsInput = []; // For 2-digit mode: stores input sequence for current number
+        let targetNum = 1;
+        let currentDigitsInput = []; // 2桁モード用入力バッファ [十の位, 一の位]
         let roundTimer = null;
         let timeLeft = 0;
 
-        // Recent inputs buffer for multi-step / shortcuts within 0.5 sec
-        let recentInputs = []; // array of {index, time}
-        const TIME_WINDOW = 500; // 0.5 seconds
+        let recentInputs = [];
+        const TIME_WINDOW = 500;
 
-        // Rankings storage in LocalStorage
-        let rankings = JSON.parse(localStorage.getItem('arduino_game_rankings_v2') || '[]');
+        let rankings = JSON.parse(localStorage.getItem('arduino_game_rankings_v3') || '[]');
 
         const buttonStates = {};
 
-        // Switch game mode
         function setGameMode(mode) {
-            if (gameState === 'PLAYING') return; // Do not switch while playing
+            if (gameState === 'PLAYING') return;
             currentMode = mode;
             if (mode === 'MODE1') {
                 mode1Btn.className = "flex-1 sm:flex-initial px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow transition-all";
@@ -218,7 +213,7 @@
                 rulesHintBox.innerHTML = `
                     <p><strong class="text-slate-200">2桁モードルール:</strong></p>
                     <p>一の位が 1〜9 の数字すべてが1回ずつ必ず登場！十の位は 0〜9 からランダム。</p>
-                    <p><strong class="text-slate-200">入力方法:</strong> まず<span class="text-cyan-400">十の位</span>の数字（R0〜R9）を入力し、次に<span class="text-cyan-400">一の位</span>の数字（R1〜R9 / 0はR0またはR9等の組み合わせなど）を連続して入力してください。</p>
+                    <p><strong class="text-slate-200">入力方法:</strong> まず<span class="text-cyan-400">十の位</span>のボタン（R0〜R9）を押し、続けて<span class="text-cyan-400">一の位</span>のボタン（R1〜R9 / 0はR0など）を押してください。</p>
                 `;
             }
         }
@@ -226,7 +221,6 @@
         mode1Btn.addEventListener('click', () => setGameMode('MODE1'));
         mode2Btn.addEventListener('click', () => setGameMode('MODE2'));
 
-        // Initialize 10 buttons in 2 rows x 5 cols layout
         function initButtonGrid() {
             buttonGrid.innerHTML = '';
             for (let i = 0; i < 10; i++) {
@@ -281,7 +275,6 @@
             serialLog.scrollTop = serialLog.scrollHeight;
         }
 
-        // --- Game Logic & Shuffled Queues ---
         function startNewGame() {
             currentScore = 0;
             currentRound = 0;
@@ -293,7 +286,6 @@
             mode2Btn.disabled = true;
 
             if (currentMode === 'MODE1') {
-                // Generate shuffled 1 to 10 questions
                 let nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
                 for (let i = nums.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
@@ -302,21 +294,18 @@
                 questionQueue = nums;
                 appendLog(`1〜10モード開始！ 出題順: ${questionQueue.join(', ')}`);
             } else {
-                // 2-digit mode: units digits 1 to 9 must be used across 10 questions.
-                // Let's create an array of units digits: [1, 2, 3, 4, 5, 6, 7, 8, 9, and one random unit 1-9]
+                // 一の位 1〜9をすべて網羅しつつ10問作成
                 let units = [1, 2, 3, 4, 5, 6, 7, 8, 9];
                 let extraUnit = Math.floor(Math.random() * 9) + 1;
                 units.push(extraUnit);
                 
-                // Shuffle units
                 for (let i = units.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [units[i], units[j]] = [units[j], units[i]];
                 }
 
-                // Generate 10 numbers where units are the shuffled array, and tens are random 0-9
                 questionQueue = units.map(u => {
-                    const tens = Math.floor(Math.random() * 10); // 0 to 9
+                    const tens = Math.floor(Math.random() * 10); // 0〜9
                     return tens * 10 + u;
                 });
                 appendLog(`2桁モード開始！ 出題順: ${questionQueue.join(', ')}`);
@@ -336,10 +325,9 @@
             targetNum = questionQueue[currentRound - 1];
             targetNumberEl.textContent = targetNum;
             targetHintEl.textContent = getHintText(targetNum, currentMode);
-            currentDigitsInput = []; // Reset step input for 2-digit
+            currentDigitsInput = [];
             
-            // Timer for round (8 seconds for 2-digit, 5 seconds for single)
-            timeLeft = currentMode === 'MODE2' ? 8.0 : 5.0;
+            timeLeft = currentMode === 'MODE2' ? 10.0 : 5.0;
             gameTimerEl.textContent = `${timeLeft.toFixed(1)}秒`;
             
             if (roundTimer) clearInterval(roundTimer);
@@ -374,7 +362,7 @@
             } else {
                 const tens = Math.floor(n / 10);
                 const units = n % 10;
-                return `ヒント: まず十の位「${tens} (R${tens})」を入力し、次に一の位「${units}」を入力してください`;
+                return `ヒント: まず十の位「${tens} (R${tens})」 → 次に一の位「${units} (R${units})」`;
             }
         }
 
@@ -382,7 +370,6 @@
             const key = `R${rIndex}`;
             appendLog(`ボタン検知: ${key}`);
             
-            // Visual feedback flash
             updateButtonUI(key, true);
             setTimeout(() => updateButtonUI(key, false), 250);
 
@@ -397,27 +384,28 @@
                     onRoundSuccess();
                 }
             } else {
-                // 2-digit mode logic: expect two inputs (tens digit value, then units digit value)
-                currentDigitsInput.push(rIndex);
-                
-                if (currentDigitsInput.length === 1) {
+                // 2桁モードの修正ロジック
+                // 1ステップ目：十の位の入力を期待
+                if (currentDigitsInput.length === 0) {
                     const expectedTens = Math.floor(targetNum / 10);
-                    if (currentDigitsInput[0] === expectedTens) {
-                        appendLog(`十の位クリア (${expectedTens})。次の一の位を入力！`);
-                        targetHintEl.textContent = `十の位OK! 次に一の位を入力してください`;
+                    if (rIndex === expectedTens) {
+                        currentDigitsInput.push(rIndex);
+                        appendLog(`十の位一致 (${rIndex})。次の一の位を入力してください`);
+                        targetHintEl.textContent = `十の位OK! 次に一の位「${targetNum % 10}」を入力`;
                     } else {
-                        // Incorrect first digit, reset or allow correction within time
-                        appendLog(`十の位ミス (入力:${rIndex}, 正解:${expectedTens})`, true);
-                        currentDigitsInput = []; // reset step
+                        appendLog(`十の位が違います (入力:R${rIndex}, 正解:${expectedTens})`, true);
                     }
-                } else if (currentDigitsInput.length === 2) {
+                } 
+                // 2ステップ目：一の位の入力を期待
+                else if (currentDigitsInput.length === 1) {
                     const expectedUnits = targetNum % 10;
-                    if (currentDigitsInput[1] === expectedUnits) {
+                    if (rIndex === expectedUnits) {
+                        currentDigitsInput.push(rIndex);
                         onRoundSuccess();
                     } else {
-                        appendLog(`一の位ミス (入力:${rIndex}, 正解:${expectedUnits})`, true);
-                        currentDigitsInput = [currentDigitsInput[1]]; // Keep second as potential new first digit
-                        targetHintEl.textContent = `一の位が違います。もう一度`;
+                        appendLog(`一の位が違います (入力:R${rIndex}, 正解:${expectedUnits})。最初からやり直し`, true);
+                        currentDigitsInput = []; // ミスしたらリセットして十の位からやり直し
+                        targetHintEl.textContent = `やり直し: まず十の位「${Math.floor(targetNum/10)}」を入力`;
                     }
                 }
             }
@@ -489,7 +477,7 @@
             rankings.push({ score: score, mode: modeName, date: dateStr });
             rankings.sort((a, b) => b.score - a.score);
             rankings = rankings.slice(0, 3);
-            localStorage.setItem('arduino_game_rankings_v2', JSON.stringify(rankings));
+            localStorage.setItem('arduino_game_rankings_v3', JSON.stringify(rankings));
             renderRanking();
         }
 
@@ -510,20 +498,6 @@
                 `;
                 rankingListEl.appendChild(div);
             });
-        }
-
-        // --- Serial Communication ---
-        function handleSerialData(data) {
-            const cleanData = data.trim();
-            if (!cleanData) return;
-
-            const match = cleanData.match(/^R([0-9])$/i);
-            if (match) {
-                const idx = parseInt(match[1], 10);
-                handleButtonPress(idx);
-            } else {
-                appendLog(`受信: ${cleanData}`);
-            }
         }
 
         async function connectSerial() {
@@ -603,7 +577,6 @@
             connectBtn.className = "px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-emerald-900/30 transition-all duration-200";
         }
 
-        // Event Listeners
         connectBtn.addEventListener('click', () => {
             if (port && port.readable && keepReading) {
                 disconnectSerial();
@@ -617,12 +590,11 @@
         clearRankingBtn.addEventListener('click', () => {
             if (confirm('ランキング記録をリセットしますか？')) {
                 rankings = [];
-                localStorage.removeItem('arduino_game_rankings');
+                localStorage.removeItem('arduino_game_rankings_v3');
                 renderRanking();
             }
         });
 
-        // Keyboard simulation for testing without Arduino (0-9 keys)
         window.addEventListener('keydown', (e) => {
             if (e.key >= '0' && e.key <= '9') {
                 const idx = parseInt(e.key, 10);
@@ -630,7 +602,6 @@
             }
         });
 
-        simKeyboardBtn.append('click', () => {});
         simKeyboardBtn.addEventListener('click', () => {
             alert('キーボードの「0」〜「9」キーを押すと、それぞれ R0〜R9 の入力をシミュレートできます！');
         });
