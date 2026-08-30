@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arduino Button Monitor</title>
+    <title>Arduino Button Game - 数字入力チャレンジ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400,500,600,700&display=swap" rel="stylesheet">
     <style>
@@ -14,67 +14,110 @@
 
     <header class="w-full max-w-4xl flex flex-col sm:flex-row items-center justify-between pb-6 border-b border-slate-800 gap-4">
         <div>
-            <h1 class="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent">
-                Arduino 10ボタン モニター
+            <h1 class="text-2xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                Arduino 10ボタン・数字入力ゲーム
             </h1>
-            <p class="text-sm text-slate-400 mt-1">R0 〜 R9 のシリアル入力をリアルタイムで認識・表示します</p>
+            <p class="text-sm text-slate-400 mt-1">指定された数字をハードウェアボタンで素早く正確に入力せよ！</p>
         </div>
         <div class="flex items-center gap-3">
             <span id="connectionStatus" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-950 text-red-400 border border-red-800">
                 <span class="w-2 h-2 mr-1.5 bg-red-500 rounded-full animate-pulse"></span>
                 未接続
             </span>
-            <button id="connectBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-blue-900/30 transition-all duration-200">
+            <button id="connectBtn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-emerald-900/30 transition-all duration-200">
                 Arduino接続
             </button>
         </div>
     </header>
 
-    <!-- Permissions Policy Notice Banner -->
-    <div id="permissionNotice" class="w-full max-w-4xl my-2 hidden bg-amber-950/60 border border-amber-800/80 rounded-xl p-4 text-xs text-amber-200 flex flex-col gap-1.5">
-        <div class="font-bold flex items-center gap-1.5 text-amber-300">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-            ブラウザのシリアルポート権限エラーについて
-        </div>
-        <p>「Access to the feature 'serial' is disallowed by permissions policy」と表示された場合、プレビュー環境のiframe制限により直接接続できないことがあります。</p>
-        <p class="font-medium">💡 解決方法: ページ右上の「別タブで開く (Open in New Tab)」や「新しいウィンドウでプレビュー」アイコンをクリックして、独立したタブ（またはフルウィンドウ）でこのページを開き直してから再度お試しください。</p>
-    </div>
-
-    <main class="w-full max-w-4xl my-8 grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow">
-        <!-- Button states (Left 2 columns) -->
-        <div class="md:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between">
-            <div>
-                <h2 class="text-lg font-semibold text-slate-200 mb-4 flex items-center justify-between">
-                    <span>ボタン入力状態 (R0 - R9)</span>
-                    <span class="text-xs font-normal text-slate-400">※アクティブ時に点灯</span>
-                </h2>
-                <!-- Grid of 10 buttons -->
-                <div id="buttonGrid" class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                    <!-- Dynamically populated via JS -->
+    <!-- Main Game Area -->
+    <main class="w-full max-w-4xl my-6 grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow">
+        
+        <!-- Game Dashboard (Left 2 cols) -->
+        <div class="md:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between shadow-xl">
+            <!-- Score & Status Header -->
+            <div class="flex justify-between items-center mb-6 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+                <div>
+                    <span class="text-xs text-slate-400 uppercase tracking-wider block">スコア</span>
+                    <span id="scoreDisplay" class="text-3xl font-extrabold text-emerald-400 font-mono">0</span>
+                </div>
+                <div class="text-center">
+                    <span class="text-xs text-slate-400 uppercase tracking-wider block">残り時間 / ステータス</span>
+                    <span id="gameTimer" class="text-xl font-bold text-cyan-400 font-mono">待機中</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-slate-400 uppercase tracking-wider block">問題数</span>
+                    <span id="roundDisplay" class="text-xl font-bold text-slate-200 font-mono">0 / 10</span>
                 </div>
             </div>
 
-            <div class="mt-8 pt-4 border-t border-slate-800 text-xs text-slate-400 flex justify-between items-center">
-                <span>直近検出されたコード: <strong id="lastDetected" class="text-blue-400 font-mono text-sm">なし</strong></span>
-                <button id="clearLogBtn" class="text-slate-500 hover:text-slate-300 underline">ログをクリア</button>
+            <!-- Target Number Display Box -->
+            <div class="flex flex-col items-center justify-center py-8 bg-gradient-to-b from-slate-950/80 to-slate-900/40 rounded-2xl border border-slate-800 mb-6 relative overflow-hidden">
+                <span class="text-xs text-slate-400 uppercase tracking-widest mb-2">お題の数字</span>
+                <div id="targetNumber" class="text-7xl font-black text-white tracking-wider font-mono drop-shadow-[0_0_25px_rgba(52,211,153,0.3)]">
+                    --
+                </div>
+                <div id="targetHint" class="text-xs text-slate-400 mt-3 font-mono">
+                    「スタート」ボタンを押してゲームを開始してください
+                </div>
+            </div>
+
+            <!-- Controls & Button Grid Visualizer (5x2 layout) -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold text-slate-300">ボタン状態 (R0 〜 R9)</span>
+                    <span class="text-[10px] text-slate-500">5個並び × 2列</span>
+                </div>
+                <!-- 2 rows x 5 cols grid -->
+                <div id="buttonGrid" class="grid grid-cols-5 gap-2.5 mb-6">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Game Action Buttons -->
+            <div class="flex gap-3">
+                <button id="startBtn" class="flex-grow py-3 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition-all duration-200">
+                    ゲームスタート (10問)
+                </button>
+                <button id="simKeyboardBtn" class="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition-all" title="キーボードの0〜9キーでシミュレーションできます">
+                    ⌨️ キーボード入力モード
+                </button>
             </div>
         </div>
 
-        <!-- Serial Log / Inspector (Right column) -->
-        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-md flex flex-col h-80 md:h-auto">
-            <h2 class="text-lg font-semibold text-slate-200 mb-3">受信ログ</h2>
-            <div id="serialLog" class="flex-grow bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-xs text-slate-300 overflow-y-auto flex flex-col gap-1 select-text">
-                <span class="text-slate-600 italic">ここに受信データが表示されます...</span>
+        <!-- Rules & Inspector (Right col) -->
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between">
+            <div>
+                <h2 class="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    入力ルールについて
+                </h2>
+                <div class="space-y-2 text-xs text-slate-400 leading-relaxed bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80">
+                    <p><strong class="text-slate-200">1〜4:</strong> R0, R0+R1... (順次)</p>
+                    <p><strong class="text-slate-200">5:</strong> R0〜R4同時 または <span class="text-emerald-400">R4単体</span>でも可</p>
+                    <p><strong class="text-slate-200">6〜9:</strong> フルセット または <span class="text-emerald-400">ショートカット（R4から0.5秒以内にR5、またはR5先押しもOK）</span></p>
+                    <p><strong class="text-slate-200">10:</strong> フルセット または <span class="text-emerald-400">R4 + R9</span> でクリア！</p>
+                </div>
+
+                <h2 class="text-sm font-semibold text-slate-200 mt-6 mb-2">受信・判定ログ</h2>
+                <div id="serialLog" class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-[11px] text-slate-300 h-48 overflow-y-auto flex flex-col gap-1 select-text">
+                    <span class="text-slate-600 italic">ここにログが表示されます...</span>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-800 text-[10px] text-slate-500 text-center">
+                Arduinoシリアル出力: <code class="text-slate-400 bg-slate-900 px-1 py-0.5 rounded">R0</code> 〜 <code class="text-slate-400 bg-slate-900 px-1 py-0.5 rounded">R9</code>
             </div>
         </div>
+
     </main>
 
-    <footer class="w-full max-w-4xl text-center text-xs text-slate-500 pt-4 border-t border-slate-800">
-        <p>Arduino側で <code class="text-slate-400 bg-slate-900 px-1.5 py-0.5 rounded">Serial.println("R0");</code> のように送信してください。ボーレートは 9600 bps に対応しています。</p>
+    <footer class="w-full max-w-4xl text-center text-xs text-slate-500 pt-2 border-t border-slate-800">
+        <p>Arduino 10ボタンゲーム v1.0 - Web Serial API対応</p>
     </footer>
 
     <script>
-        // State variables
+        // Serial variables
         let port;
         let reader;
         let inputDone;
@@ -85,12 +128,30 @@
         const connectionStatus = document.getElementById('connectionStatus');
         const buttonGrid = document.getElementById('buttonGrid');
         const serialLog = document.getElementById('serialLog');
-        const lastDetected = document.getElementById('lastDetected');
-        const clearLogBtn = document.getElementById('clearLogBtn');
+        const startBtn = document.getElementById('startBtn');
+        const simKeyboardBtn = document.getElementById('simKeyboardBtn');
+        const targetNumberEl = document.getElementById('targetNumber');
+        const targetHintEl = document.getElementById('targetHint');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const gameTimerEl = document.getElementById('gameTimer');
+        const roundDisplay = document.getElementById('roundDisplay');
+
+        // Game state
+        let gameState = 'IDLE'; // 'IDLE', 'PLAYING', 'ROUND_CLEAR'
+        let currentScore = 0;
+        let currentRound = 0;
+        const maxRounds = 10;
+        let targetNum = 1;
+        let roundTimer = null;
+        let timeLeft = 0;
+
+        // Recent inputs buffer for multi-step / shortcuts within 0.5 sec
+        let recentInputs = []; // array of {index, time}
+        const TIME_WINDOW = 500; // 0.5 seconds
 
         const buttonStates = {};
 
-        // Initialize 10 buttons (R0 to R9)
+        // Initialize 10 buttons in 2 rows x 5 cols layout
         function initButtonGrid() {
             buttonGrid.innerHTML = '';
             for (let i = 0; i < 10; i++) {
@@ -99,18 +160,17 @@
 
                 const card = document.createElement('div');
                 card.id = `btn-card-${key}`;
-                card.className = "flex flex-col items-center justify-center p-4 rounded-xl border border-slate-800 bg-slate-950/50 transition-all duration-150";
+                card.className = "flex flex-col items-center justify-center p-3 rounded-xl border border-slate-800 bg-slate-950/50 transition-all duration-150";
                 
                 card.innerHTML = `
-                    <span class="text-xl font-bold font-mono text-slate-400" id="label-${key}">${key}</span>
-                    <span class="w-3 h-3 rounded-full bg-slate-800 mt-2 transition-all duration-150" id="indicator-${key}"></span>
-                    <span class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider status-text">OFF</span>
+                    <span class="text-xs font-bold font-mono text-slate-400" id="label-${key}">${key}</span>
+                    <span class="w-2.5 h-2.5 rounded-full bg-slate-800 mt-1.5 transition-all duration-150" id="indicator-${key}"></span>
+                    <span class="text-[9px] text-slate-500 mt-1 uppercase tracking-wider status-text">OFF</span>
                 `;
                 buttonGrid.appendChild(card);
             }
         }
 
-        // Update button visual state
         function updateButtonUI(activeKey, isActive) {
             const card = document.getElementById(`btn-card-${activeKey}`);
             const indicator = document.getElementById(`indicator-${activeKey}`);
@@ -120,21 +180,20 @@
             if (!card) return;
 
             if (isActive) {
-                card.className = "flex flex-col items-center justify-center p-4 rounded-xl border border-blue-500/50 bg-blue-950/30 shadow-lg shadow-blue-900/20 transition-all duration-150 scale-105";
-                indicator.className = "w-3 h-3 rounded-full bg-blue-400 mt-2 shadow-md shadow-blue-400/50 animate-pulse";
-                label.className = "text-xl font-bold font-mono text-blue-300";
+                card.className = "flex flex-col items-center justify-center p-3 rounded-xl border border-emerald-500/50 bg-emerald-950/30 shadow-md shadow-emerald-900/20 transition-all duration-150 scale-105";
+                indicator.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 mt-1.5 shadow-sm shadow-emerald-400/50 animate-pulse";
+                label.className = "text-xs font-bold font-mono text-emerald-300";
                 statusText.textContent = "ON";
-                statusText.className = "text-[10px] text-blue-400 font-semibold mt-1 uppercase tracking-wider status-text";
+                statusText.className = "text-[9px] text-emerald-400 font-semibold mt-1 uppercase tracking-wider status-text";
             } else {
-                card.className = "flex flex-col items-center justify-center p-4 rounded-xl border border-slate-800 bg-slate-950/50 transition-all duration-150";
-                indicator.className = "w-3 h-3 rounded-full bg-slate-800 mt-2 transition-all duration-150";
-                label.className = "text-xl font-bold font-mono text-slate-400";
+                card.className = "flex flex-col items-center justify-center p-3 rounded-xl border border-slate-800 bg-slate-950/50 transition-all duration-150";
+                indicator.className = "w-2.5 h-2.5 rounded-full bg-slate-800 mt-1.5 transition-all duration-150";
+                label.className = "text-xs font-bold font-mono text-slate-400";
                 statusText.textContent = "OFF";
-                statusText.className = "text-[10px] text-slate-500 mt-1 uppercase tracking-wider status-text";
+                statusText.className = "text-[9px] text-slate-500 mt-1 uppercase tracking-wider status-text";
             }
         }
 
-        // Add log entry
         function appendLog(text, isError = false) {
             if (serialLog.children.length === 1 && serialLog.children[0].classList.contains('italic')) {
                 serialLog.innerHTML = '';
@@ -147,39 +206,162 @@
             serialLog.scrollTop = serialLog.scrollHeight;
         }
 
-        // Handle incoming data line
+        // --- Game Logic & Validation ---
+        function startNewGame() {
+            currentScore = 0;
+            currentRound = 0;
+            scoreDisplay.textContent = currentScore;
+            gameState = 'PLAYING';
+            startBtn.textContent = 'ゲーム中...';
+            startBtn.disabled = true;
+            nextRound();
+        }
+
+        function nextRound() {
+            currentRound++;
+            if (currentRound > maxRounds) {
+                endGame();
+                return;
+            }
+            roundDisplay.textContent = `${currentRound} / ${maxRounds}`;
+            targetNum = Math.floor(Math.random() * 10) + 1; // 1 to 10
+            targetNumberEl.textContent = targetNum;
+            targetHintEl.textContent = getHintText(targetNum);
+            
+            // Timer for round (e.g. 5 seconds per target)
+            timeLeft = 5.0;
+            gameTimerEl.textContent = `${timeLeft.toFixed(1)}秒`;
+            
+            if (roundTimer) clearInterval(roundTimer);
+            roundTimer = setInterval(() => {
+                timeLeft -= 0.1;
+                if (timeLeft <= 0) {
+                    gameTimerEl.textContent = '時間切れ!';
+                    appendLog(`時間切れ! (お題: ${targetNum})`, true);
+                    clearInterval(roundTimer);
+                    setTimeout(nextRound, 1200);
+                } else {
+                    gameTimerEl.textContent = `${timeLeft.toFixed(1)}秒`;
+                }
+            }, 100);
+        }
+
+        function getHintText(n) {
+            switch(n) {
+                case 1: return "ヒント: R0 を押せ";
+                case 2: return "ヒント: R0, R1 を順にまたは同時に";
+                case 3: return "ヒント: R0〜R2 を入力";
+                case 4: return "ヒント: R0〜R3 を入力";
+                case 5: return "ヒント: R0〜R4 または R4単体でもOK";
+                case 6: return "ヒント: R0〜R5 または R4→R5 (0.5秒以内/R5先も可)";
+                case 7: return "ヒント: フルセット または R4→R6 (0.5秒以内)";
+                case 8: return "ヒント: フルセット または R4→R7 (0.5秒以内)";
+                case 9: return "ヒント: フルセット または R4→R8 (0.5秒以内)";
+                case 10: return "ヒント: フルセット または R4 + R9 でOK！";
+                default: return "";
+            }
+        }
+
+        function handleButtonPress(rIndex) {
+            const key = `R${rIndex}`;
+            appendLog(`ボタン検知: ${key}`);
+            
+            // Visual feedback flash
+            updateButtonUI(key, true);
+            setTimeout(() => updateButtonUI(key, false), 250);
+
+            if (gameState !== 'PLAYING') return;
+
+            const now = Date.now();
+            // Clean up old inputs (> 500ms)
+            recentInputs = recentInputs.filter(item => now - item.time < TIME_WINDOW);
+            recentInputs.push({ index: rIndex, time: now });
+
+            // Check if condition met for targetNum
+            if (checkTargetCondition(targetNum)) {
+                clearInterval(roundTimer);
+                const points = Math.ceil(timeLeft * 10) + 50;
+                currentScore += points;
+                scoreDisplay.textContent = currentScore;
+                targetNumberEl.textContent = `正解! (+${points})`;
+                appendLog(`🎉 正解！ お題: ${targetNum}`);
+                recentInputs = []; // reset buffer
+                
+                setTimeout(nextRound, 1200);
+            }
+        }
+
+        function checkTargetCondition(target) {
+            const pressedIndices = recentInputs.map(i => i.index);
+            const hasIndex = (idx) => pressedIndices.includes(idx);
+            
+            // Helper to check if R0 to N are all pressed recently
+            const hasRange = (start, end) => {
+                for (let i = start; i <= end; i++) {
+                    if (!pressedIndices.includes(i)) return false;
+                }
+                return true;
+            };
+
+            switch(target) {
+                case 1: return hasIndex(0);
+                case 2: return hasRange(0, 1);
+                case 3: return hasRange(0, 2);
+                case 4: return hasRange(0, 3);
+                case 5: 
+                    // R0-R4 or R4 only
+                    return hasRange(0, 4) || hasIndex(4);
+                case 6:
+                    // R0-R5 or (R4 and R5 within 0.5s, either order)
+                    return hasRange(0, 5) || (hasIndex(4) && hasIndex(5));
+                case 7:
+                    // R0-R6 or (R4 and R6 within 0.5s)
+                    return hasRange(0, 6) || (hasIndex(4) && hasIndex(6));
+                case 8:
+                    // R0-R7 or (R4 and R7 within 0.5s)
+                    return hasRange(0, 7) || (hasIndex(4) && hasIndex(7));
+                case 9:
+                    // R0-R8 or (R4 and R8 within 0.5s)
+                    return hasRange(0, 8) || (hasIndex(4) && hasIndex(8));
+                case 10:
+                    // R0-R9 or (R4 and R9)
+                    return hasRange(0, 9) || (hasIndex(4) && hasIndex(9));
+                default:
+                    return false;
+            }
+        }
+
+        function endGame() {
+            gameState = 'IDLE';
+            targetNumberEl.textContent = 'GAME OVER';
+            targetHintEl.textContent = `最終スコア: ${currentScore} 点`;
+            gameTimerEl.textContent = '終了';
+            startBtn.textContent = 'もう一度プレイ';
+            startBtn.disabled = false;
+            appendLog(`ゲーム終了！ 最終スコア: ${currentScore}`);
+        }
+
+        // --- Serial Communication ---
         function handleSerialData(data) {
             const cleanData = data.trim();
             if (!cleanData) return;
 
-            appendLog(`受信: ${cleanData}`);
-
-            // Check if matches R0 through R9
             const match = cleanData.match(/^R([0-9])$/i);
             if (match) {
-                const key = `R${match[1]}`;
-                lastDetected.textContent = key;
-                
-                // Briefly flash or set state (assume momentary press or toggle depending on Arduino logic)
-                updateButtonUI(key, true);
-                setTimeout(() => {
-                    updateButtonUI(key, false);
-                }, 300); // 300ms visual flash
+                const idx = parseInt(match[1], 10);
+                handleButtonPress(idx);
+            } else {
+                appendLog(`受信: ${cleanData}`);
             }
         }
 
-        // Web Serial Connection setup
         async function connectSerial() {
             if (!('serial' in navigator)) {
-                appendLog('お使いのブラウザはWeb Serial APIに対応していません。Google ChromeまたはMicrosoft Edgeをご利用ください。', true);
+                appendLog('お使いのブラウザはWeb Serial APIに対応していません。', true);
                 return;
             }
 
             try {
-                // Show permission notice if requestPort fails due to permissions policy
-                const permissionNotice = document.getElementById('permissionNotice');
-                if (permissionNotice) permissionNotice.classList.add('hidden');
-
                 port = await navigator.serial.requestPort();
                 await port.open({ baudRate: 9600 });
 
@@ -198,11 +380,6 @@
                 console.error('接続エラー:', error);
                 appendLog(`接続エラー: ${error.message}`, true);
                 connectStatusDisconnected();
-
-                if (error.message.includes('permissions policy') || error.name === 'SecurityError') {
-                    const permissionNotice = document.getElementById('permissionNotice');
-                    if (permissionNotice) permissionNotice.classList.remove('hidden');
-                }
             }
         }
 
@@ -211,13 +388,11 @@
             try {
                 while (keepReading) {
                     const { value, done } = await reader.read();
-                    if (done) {
-                        break;
-                    }
+                    if (done) break;
                     if (value) {
                         buffer += value;
                         let lines = buffer.split('\n');
-                        buffer = lines.pop(); // keep remainder
+                        buffer = lines.pop();
                         for (let line of lines) {
                             handleSerialData(line);
                         }
@@ -226,24 +401,16 @@
             } catch (error) {
                 appendLog(`読み取りエラー: ${error.message}`, true);
             } finally {
-                if (reader) {
-                    reader.releaseLock();
-                }
+                if (reader) reader.releaseLock();
             }
         }
 
         async function disconnectSerial() {
             keepReading = false;
             try {
-                if (reader) {
-                    await reader.cancel();
-                }
-                if (inputDone) {
-                    await inputDone.catch(() => {});
-                }
-                if (port) {
-                    await port.close();
-                }
+                if (reader) await reader.cancel();
+                if (inputDone) await inputDone.catch(() => {});
+                if (port) await port.close();
             } catch (error) {
                 console.error('切断エラー:', error);
             }
@@ -262,10 +429,10 @@
             connectionStatus.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-950 text-red-400 border border-red-800";
             connectionStatus.innerHTML = '<span class="w-2 h-2 mr-1.5 bg-red-500 rounded-full"></span>未接続';
             connectBtn.textContent = 'Arduino接続';
-            connectBtn.className = "px-4 py-2 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-blue-900/30 transition-all duration-200";
+            connectBtn.className = "px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-emerald-900/30 transition-all duration-200";
         }
 
-        // Event listeners
+        // Event Listeners
         connectBtn.addEventListener('click', () => {
             if (port && port.readable && keepReading) {
                 disconnectSerial();
@@ -274,11 +441,20 @@
             }
         });
 
-        clearLogBtn.addEventListener('click', () => {
-            serialLog.innerHTML = '<span class="text-slate-600 italic">ログをクリアしました...</span>';
+        startBtn.addEventListener('click', startNewGame);
+
+        // Keyboard simulation for testing without Arduino (0-9 keys)
+        window.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') {
+                const idx = parseInt(e.key, 10);
+                handleButtonPress(idx);
+            }
         });
 
-        // Initialize UI on load
+        simKeyboardBtn.addEventListener('click', () => {
+            alert('キーボードの「0」〜「9」キーを押すと、それぞれ R0〜R9 の入力をシミュレートできます！');
+        });
+
         window.onload = () => {
             initButtonGrid();
         };
