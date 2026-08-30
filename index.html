@@ -51,10 +51,10 @@
                 </div>
             </div>
 
-            <!-- Target Number Display Box -->
-            <div class="flex flex-col items-center justify-center py-8 bg-gradient-to-b from-slate-950/80 to-slate-900/40 rounded-2xl border border-slate-800 mb-6 relative overflow-hidden">
+            <!-- Target Number Display Box (Font size enlarged) -->
+            <div class="flex flex-col items-center justify-center py-10 bg-gradient-to-b from-slate-950/80 to-slate-900/40 rounded-2xl border border-slate-800 mb-6 relative overflow-hidden">
                 <span class="text-xs text-slate-400 uppercase tracking-widest mb-2">お題の数字</span>
-                <div id="targetNumber" class="text-7xl font-black text-white tracking-wider font-mono drop-shadow-[0_0_25px_rgba(52,211,153,0.3)]">
+                <div id="targetNumber" class="text-8xl sm:text-9xl font-black text-white tracking-wider font-mono drop-shadow-[0_0_35px_rgba(52,211,153,0.4)]">
                     --
                 </div>
                 <div id="targetHint" class="text-xs text-slate-400 mt-3 font-mono">
@@ -77,7 +77,7 @@
             <!-- Game Action Buttons -->
             <div class="flex gap-3">
                 <button id="startBtn" class="flex-grow py-3 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition-all duration-200">
-                    ゲームスタート (10問)
+                    ゲームスタート (10問ランダム)
                 </button>
                 <button id="simKeyboardBtn" class="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition-all" title="キーボードの0〜9キーでシミュレーションできます">
                     ⌨️ キーボード入力モード
@@ -85,27 +85,39 @@
             </div>
         </div>
 
-        <!-- Rules & Inspector (Right col) -->
-        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between">
+        <!-- Rules, Ranking & Inspector (Right col) -->
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between gap-6">
             <div>
-                <h2 class="text-sm font-semibold text-slate-200 mb-3 flex items-center gap-1.5">
+                <!-- Ranking Top 3 Section -->
+                <h2 class="text-sm font-semibold text-slate-200 mb-2 flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                        ハイスコア・トップ3
+                    </span>
+                    <button id="clearRankingBtn" class="text-[10px] text-slate-500 hover:text-slate-300 underline">リセット</button>
+                </h2>
+                <div id="rankingList" class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 font-mono text-xs text-slate-300 space-y-1.5 mb-6">
+                    <!-- Populated by JS -->
+                </div>
+
+                <h2 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-1.5">
                     <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     入力ルールについて
                 </h2>
-                <div class="space-y-2 text-xs text-slate-400 leading-relaxed bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/80">
+                <div class="space-y-1.5 text-xs text-slate-400 leading-relaxed bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
                     <p><strong class="text-slate-200">1〜4:</strong> R0, R0+R1... (順次)</p>
                     <p><strong class="text-slate-200">5:</strong> R0〜R4同時 または <span class="text-emerald-400">R4単体</span>でも可</p>
-                    <p><strong class="text-slate-200">6〜9:</strong> フルセット または <span class="text-emerald-400">ショートカット（R4から0.5秒以内にR5、またはR5先押しもOK）</span></p>
+                    <p><strong class="text-slate-200">6〜9:</strong> フルセット または <span class="text-emerald-400">ショートカット（R4→R5など0.5秒以内 / 逆順も可）</span></p>
                     <p><strong class="text-slate-200">10:</strong> フルセット または <span class="text-emerald-400">R4 + R9</span> でクリア！</p>
                 </div>
 
-                <h2 class="text-sm font-semibold text-slate-200 mt-6 mb-2">受信・判定ログ</h2>
-                <div id="serialLog" class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-[11px] text-slate-300 h-48 overflow-y-auto flex flex-col gap-1 select-text">
+                <h2 class="text-sm font-semibold text-slate-200 mt-4 mb-2">受信・判定ログ</h2>
+                <div id="serialLog" class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-[11px] text-slate-300 h-32 overflow-y-auto flex flex-col gap-1 select-text">
                     <span class="text-slate-600 italic">ここにログが表示されます...</span>
                 </div>
             </div>
 
-            <div class="mt-4 pt-3 border-t border-slate-800 text-[10px] text-slate-500 text-center">
+            <div class="pt-3 border-t border-slate-800 text-[10px] text-slate-500 text-center">
                 Arduinoシリアル出力: <code class="text-slate-400 bg-slate-900 px-1 py-0.5 rounded">R0</code> 〜 <code class="text-slate-400 bg-slate-900 px-1 py-0.5 rounded">R9</code>
             </div>
         </div>
@@ -113,7 +125,7 @@
     </main>
 
     <footer class="w-full max-w-4xl text-center text-xs text-slate-500 pt-2 border-t border-slate-800">
-        <p>Arduino 10ボタンゲーム v1.0 - Web Serial API対応</p>
+        <p>Arduino 10ボタンゲーム v1.1 - Web Serial API対応</p>
     </footer>
 
     <script>
@@ -135,12 +147,15 @@
         const scoreDisplay = document.getElementById('scoreDisplay');
         const gameTimerEl = document.getElementById('gameTimer');
         const roundDisplay = document.getElementById('roundDisplay');
+        const rankingListEl = document.getElementById('rankingList');
+        const clearRankingBtn = document.getElementById('clearRankingBtn');
 
         // Game state
         let gameState = 'IDLE'; // 'IDLE', 'PLAYING', 'ROUND_CLEAR'
         let currentScore = 0;
         let currentRound = 0;
         const maxRounds = 10;
+        let questionQueue = [];
         let targetNum = 1;
         let roundTimer = null;
         let timeLeft = 0;
@@ -148,6 +163,9 @@
         // Recent inputs buffer for multi-step / shortcuts within 0.5 sec
         let recentInputs = []; // array of {index, time}
         const TIME_WINDOW = 500; // 0.5 seconds
+
+        // Rankings storage in LocalStorage
+        let rankings = JSON.parse(localStorage.getItem('arduino_game_rankings') || '[]');
 
         const buttonStates = {};
 
@@ -169,6 +187,7 @@
                 `;
                 buttonGrid.appendChild(card);
             }
+            renderRanking();
         }
 
         function updateButtonUI(activeKey, isActive) {
@@ -206,7 +225,7 @@
             serialLog.scrollTop = serialLog.scrollHeight;
         }
 
-        // --- Game Logic & Validation ---
+        // --- Game Logic & Shuffled 1 to 10 ---
         function startNewGame() {
             currentScore = 0;
             currentRound = 0;
@@ -214,6 +233,15 @@
             gameState = 'PLAYING';
             startBtn.textContent = 'ゲーム中...';
             startBtn.disabled = true;
+
+            // Generate shuffled 1 to 10 questions
+            let nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            for (let i = nums.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [nums[i], nums[j]] = [nums[j], nums[i]];
+            }
+            questionQueue = nums;
+            appendLog(`ゲーム開始！ 出題順: ${questionQueue.join(', ')}`);
             nextRound();
         }
 
@@ -224,11 +252,11 @@
                 return;
             }
             roundDisplay.textContent = `${currentRound} / ${maxRounds}`;
-            targetNum = Math.floor(Math.random() * 10) + 1; // 1 to 10
+            targetNum = questionQueue[currentRound - 1];
             targetNumberEl.textContent = targetNum;
             targetHintEl.textContent = getHintText(targetNum);
             
-            // Timer for round (e.g. 5 seconds per target)
+            // Timer for round (5 seconds per target)
             timeLeft = 5.0;
             gameTimerEl.textContent = `${timeLeft.toFixed(1)}秒`;
             
@@ -253,7 +281,7 @@
                 case 3: return "ヒント: R0〜R2 を入力";
                 case 4: return "ヒント: R0〜R3 を入力";
                 case 5: return "ヒント: R0〜R4 または R4単体でもOK";
-                case 6: return "ヒント: R0〜R5 または R4→R5 (0.5秒以内/R5先も可)";
+                case 6: return "ヒント: R0〜R5 または R4→R5 (0.5秒以内/逆順も可)";
                 case 7: return "ヒント: フルセット または R4→R6 (0.5秒以内)";
                 case 8: return "ヒント: フルセット または R4→R7 (0.5秒以内)";
                 case 9: return "ヒント: フルセット または R4→R8 (0.5秒以内)";
@@ -295,7 +323,6 @@
             const pressedIndices = recentInputs.map(i => i.index);
             const hasIndex = (idx) => pressedIndices.includes(idx);
             
-            // Helper to check if R0 to N are all pressed recently
             const hasRange = (start, end) => {
                 for (let i = start; i <= end; i++) {
                     if (!pressedIndices.includes(i)) return false;
@@ -309,22 +336,16 @@
                 case 3: return hasRange(0, 2);
                 case 4: return hasRange(0, 3);
                 case 5: 
-                    // R0-R4 or R4 only
                     return hasRange(0, 4) || hasIndex(4);
                 case 6:
-                    // R0-R5 or (R4 and R5 within 0.5s, either order)
                     return hasRange(0, 5) || (hasIndex(4) && hasIndex(5));
                 case 7:
-                    // R0-R6 or (R4 and R6 within 0.5s)
                     return hasRange(0, 6) || (hasIndex(4) && hasIndex(6));
                 case 8:
-                    // R0-R7 or (R4 and R7 within 0.5s)
                     return hasRange(0, 7) || (hasIndex(4) && hasIndex(7));
                 case 9:
-                    // R0-R8 or (R4 and R8 within 0.5s)
                     return hasRange(0, 8) || (hasIndex(4) && hasIndex(8));
                 case 10:
-                    // R0-R9 or (R4 and R9)
                     return hasRange(0, 9) || (hasIndex(4) && hasIndex(9));
                 default:
                     return false;
@@ -339,6 +360,37 @@
             startBtn.textContent = 'もう一度プレイ';
             startBtn.disabled = false;
             appendLog(`ゲーム終了！ 最終スコア: ${currentScore}`);
+
+            // Save score to ranking
+            saveRanking(currentScore);
+        }
+
+        function saveRanking(score) {
+            const dateStr = new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            rankings.push({ score: score, date: dateStr });
+            rankings.sort((a, b) => b.score - a.score); // Descending order
+            rankings = rankings.slice(0, 3); // Keep top 3
+            localStorage.setItem('arduino_game_rankings', JSON.stringify(rankings));
+            renderRanking();
+        }
+
+        function renderRanking() {
+            rankingListEl.innerHTML = '';
+            if (rankings.length === 0) {
+                rankingListEl.innerHTML = '<span class="text-slate-600 italic">まだ記録がありません</span>';
+                return;
+            }
+            rankings.forEach((item, index) => {
+                const medals = ['🥇', '🥈', '🥉'];
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center py-1 border-b border-slate-900 last:border-0";
+                div.innerHTML = `
+                    <span class="font-bold text-slate-200">${medals[index]} ${index + 1}位</span>
+                    <span class="text-emerald-400 font-extrabold">${item.score}点</span>
+                    <span class="text-[10px] text-slate-500">${item.date}</span>
+                `;
+                rankingListEl.appendChild(div);
+            });
         }
 
         // --- Serial Communication ---
@@ -443,6 +495,14 @@
 
         startBtn.addEventListener('click', startNewGame);
 
+        clearRankingBtn.addEventListener('click', () => {
+            if (confirm('ランキング記録をリセットしますか？')) {
+                rankings = [];
+                localStorage.removeItem('arduino_game_rankings');
+                renderRanking();
+            }
+        });
+
         // Keyboard simulation for testing without Arduino (0-9 keys)
         window.addEventListener('keydown', (e) => {
             if (e.key >= '0' && e.key <= '9') {
@@ -451,6 +511,7 @@
             }
         });
 
+        simKeyboardBtn.append('click', () => {});
         simKeyboardBtn.addEventListener('click', () => {
             alert('キーボードの「0」〜「9」キーを押すと、それぞれ R0〜R9 の入力をシミュレートできます！');
         });
