@@ -1,4 +1,4 @@
-<--20260831.0724-->
+<!--20260831.1456-->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -189,6 +189,8 @@
         let rankings = JSON.parse(localStorage.getItem('arduino_game_rankings_v2') || '[]');
 
         const buttonStates = {};
+        const BTN_IDLE_CLASS   = "aspect-square flex items-center justify-center rounded-lg border-2 border-slate-700 bg-slate-800 text-slate-300 font-mono font-bold text-sm transition-all duration-150";
+        const BTN_ACTIVE_CLASS = "aspect-square flex items-center justify-center rounded-lg border-2 border-emerald-400 bg-emerald-500/30 text-emerald-300 font-mono font-bold text-sm scale-95 shadow-lg shadow-emerald-500/50 transition-all duration-150";
 
         // Switch game mode
         function setGameMode(mode) {
@@ -229,6 +231,37 @@
 
         // Initialize 10 buttons in 2 rows x 5 cols layout
         function initButtonGrid() {
+            buttonGrid.innerHTML = '';
+            for (let i = 0; i < 10; i++) {
+                const btn = document.createElement('div');
+                btn.id = `btn-R${i}`;
+                btn.className = BTN_IDLE_CLASS;
+                btn.textContent = `R${i}`;
+                buttonGrid.appendChild(btn);
+                buttonStates[i] = btn;
+            }
+        }
+
+        // Toggle a button's visual state (flash on press)
+        function updateButtonUI(key, active) {
+            const idx = parseInt(key.replace('R', ''), 10);
+            const btn = buttonStates[idx];
+            if (!btn) return;
+            btn.className = active ? BTN_ACTIVE_CLASS : BTN_IDLE_CLASS;
+        }
+
+        // Append a line to the serial/judgement log panel
+        function appendLog(message, isError = false) {
+            const placeholder = serialLog.querySelector('.italic');
+            if (placeholder) placeholder.remove();
+            const line = document.createElement('div');
+            line.className = isError ? 'text-red-400' : 'text-slate-300';
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            line.textContent = `[${time}] ${message}`;
+            serialLog.appendChild(line);
+            serialLog.scrollTop = serialLog.scrollHeight;
+        }
+
         // --- Game Logic & Shuffled Queues ---
         function startNewGame() {
             currentScore = 0;
@@ -578,7 +611,6 @@
             }
         });
 
-        simKeyboardBtn.append('click', () => {});
         simKeyboardBtn.addEventListener('click', () => {
             alert('キーボードの「0」〜「9」キーを押すと、それぞれ R0〜R9 の入力をシミュレートできます！');
         });
