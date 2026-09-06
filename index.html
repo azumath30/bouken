@@ -1,4 +1,4 @@
-<!--0902-0737-->
+<!--0907-0702-->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -263,9 +263,9 @@
             } else {
                 rulesHintBox.innerHTML = `
                     <p><strong class="text-slate-200">2桁モードルール (10〜99):</strong></p>
-                    <p>ボタン1→R0, ボタン2→R1 ... ボタン10→R9 の対応です。</p>
+                    <p>数字Nを入力するには <span class="text-emerald-400">R0〜R(N-1) をまとめて押す</span>（例: 4なら R0,R1,R2,R3 を0.5秒以内に）。</p>
                     <p>十の位は <span class="text-cyan-400">1〜9</span>（0除外）、一の位は <span class="text-cyan-400">1〜9</span> がすべて1回ずつ登場！</p>
-                    <p><strong class="text-slate-200">入力ルール:</strong> まず十の位に対応するボタンを押し、次に一の位のボタンを押してください。</p>
+                    <p><strong class="text-slate-200">入力ルール:</strong> まず十の位のボタン群を押し、次に一の位のボタン群を押してください。</p>
                 `;
             }
         }
@@ -340,6 +340,7 @@
             }
 
             currentDigitsInput = [];
+            recentInputs = [];
             nextRound();
         }
 
@@ -354,6 +355,7 @@
             targetNumberEl.textContent = targetNum;
             targetHintEl.textContent = getHintText(targetNum, currentMode);
             currentDigitsInput = [];
+            recentInputs = [];
             koreanBadge.classList.add('hidden');
             
             speakKorean(getKoreanWord(targetNum));
@@ -398,9 +400,7 @@
             } else {
                 const tens = Math.floor(n / 10);
                 const units = n % 10;
-                const tensBtn = tens - 1;
-                const unitsBtn = units - 1;
-                return `ヒント: 十の位「${tens}」→ボタン${tens} (R${tensBtn}) , 一の位「${units}」→ボタン${units} (R${unitsBtn})`;
+                return `ヒント: 十の位「${tens}」→ R0〜R${tens - 1} をまとめて押す , 一の位「${units}」→ R0〜R${units - 1} をまとめて押す`;
             }
         }
 
@@ -428,31 +428,40 @@
                     onRoundSuccess();
                 }
             } else {
-                // 2桁モード: ボタン1->R0, ボタン2->R1 ...
+                // 2桁モード: 数字N は R0〜R(N-1) をまとめて(TIME_WINDOW以内に)押す方式
+                const now = Date.now();
+                recentInputs = recentInputs.filter(item => now - item.time < TIME_WINDOW);
+                recentInputs.push({ index: rIndex, time: now });
+                const pressedIndices = recentInputs.map(item => item.index);
+
                 const expectedTensDigit = Math.floor(targetNum / 10);
                 const expectedUnitsDigit = targetNum % 10;
-                const actualExpectedTensBtn = expectedTensDigit === 10 ? 9 : expectedTensDigit - 1;
-                const actualExpectedUnitsBtn = expectedUnitsDigit === 10 ? 9 : expectedUnitsDigit - 1;
 
                 if (currentDigitsInput.length === 0) {
-                    if (rIndex === actualExpectedTensBtn) {
-                        currentDigitsInput.push(rIndex);
-                        appendLog(`十の位一致 (R${rIndex} = 数字${expectedTensDigit})。次の一の位を入力！`);
-                        targetHintEl.textContent = `十の位OK! 次に一の位「${expectedUnitsDigit}」を入力`;
-                    } else {
-                        appendLog(`十の位ミス (入力:R${rIndex}, 正解ボタン:R${actualExpectedTensBtn})`, true);
+                    const neededMax = expectedTensDigit - 1;
+                    if (rIndex > neededMax) {
+                        appendLog(`十の位ミス (入力:R${rIndex}, 必要ボタン:R0〜R${neededMax})`, true);
                         speakKorean("오답");
+                        recentInputs = [];
+                    } else if (hasFullRange(pressedIndices, 0, neededMax)) {
+                        appendLog(`十の位一致 (R0〜R${neededMax} = 数字${expectedTensDigit})。次の一の位を入力！`);
+                        targetHintEl.textContent = `十の位OK! 次に一の位「${expectedUnitsDigit}」を入力`;
+                        currentDigitsInput.push('tens');
+                        recentInputs = [];
                     }
                 } else if (currentDigitsInput.length === 1) {
-                    if (rIndex === actualExpectedUnitsBtn) {
-                        currentDigitsInput.push(rIndex);
-                        speakKorean("정답");
-                        onRoundSuccess();
-                    } else {
-                        appendLog(`一の位ミス (入力:R${rIndex}, 正解ボタン:R${actualExpectedUnitsBtn})。最初からやり直し`, true);
+                    const neededMax = expectedUnitsDigit - 1;
+                    if (rIndex > neededMax) {
+                        appendLog(`一の位ミス (入力:R${rIndex}, 必要ボタン:R0〜R${neededMax})。最初からやり直し`, true);
                         speakKorean("오답");
                         currentDigitsInput = [];
+                        recentInputs = [];
                         targetHintEl.textContent = `やり直し: まず十の位「${expectedTensDigit}」を入力`;
+                    } else if (hasFullRange(pressedIndices, 0, neededMax)) {
+                        currentDigitsInput.push('units');
+                        speakKorean("정답");
+                        recentInputs = [];
+                        onRoundSuccess();
                     }
                 }
             }
@@ -474,6 +483,13 @@
             currentDigitsInput = [];
             
             setTimeout(nextRound, 2000);
+        }
+
+        function hasFullRange(pressedIndices, start, end) {
+            for (let i = start; i <= end; i++) {
+                if (!pressedIndices.includes(i)) return false;
+            }
+            return true;
         }
 
         function checkTargetCondition(target) {
@@ -579,6 +595,17 @@
                 appendLog(`接続エラー: ${error.message}`, true);
                 connectStatusDisconnected();
             }
+        }
+
+        function handleSerialData(line) {
+            line = line.trim();
+            if (!line) return;
+            const match = line.match(/^R(\d)$/);
+            if (!match) {
+                appendLog(`不明なデータ: ${line}`, true);
+                return;
+            }
+            handleButtonPress(parseInt(match[1], 10));
         }
 
         async function readLoop() {
