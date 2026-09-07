@@ -1,4 +1,4 @@
-<!--0907-0702-->
+<!--0908-0632-->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -188,6 +188,8 @@
 
         let recentInputs = [];
         const TIME_WINDOW = 500;
+        let mode1EvalTimer = null;
+        const MODE1_SETTLE_MS = 200; // 連続押下が落ち着くのを待ってから判定する猶予時間
 
         let rankings = JSON.parse(localStorage.getItem('arduino_game_rankings_v8') || '[]');
 
@@ -356,8 +358,9 @@
             targetHintEl.textContent = getHintText(targetNum, currentMode);
             currentDigitsInput = [];
             recentInputs = [];
+            if (mode1EvalTimer) { clearTimeout(mode1EvalTimer); mode1EvalTimer = null; }
             koreanBadge.classList.add('hidden');
-            
+
             speakKorean(getKoreanWord(targetNum));
 
             timeLeft = currentMode === 'MODE2' ? 12.0 : 5.0;
@@ -423,10 +426,15 @@
                 recentInputs = recentInputs.filter(item => now - item.time < TIME_WINDOW);
                 recentInputs.push({ index: rIndex, time: now });
 
-                if (checkTargetCondition(targetNum)) {
-                    speakKorean("정답");
-                    onRoundSuccess();
-                }
+                // 連続押下が落ち着くまで判定を遅らせる（例: 8を10ボタン全押しの途中で誤判定しないように）
+                if (mode1EvalTimer) clearTimeout(mode1EvalTimer);
+                mode1EvalTimer = setTimeout(() => {
+                    mode1EvalTimer = null;
+                    if (checkTargetCondition(targetNum)) {
+                        speakKorean("정답");
+                        onRoundSuccess();
+                    }
+                }, MODE1_SETTLE_MS);
             } else {
                 // 2桁モード: 数字N は R0〜R(N-1) をまとめて(TIME_WINDOW以内に)押す方式
                 const now = Date.now();
@@ -469,6 +477,7 @@
 
         function onRoundSuccess() {
             clearInterval(roundTimer);
+            if (mode1EvalTimer) { clearTimeout(mode1EvalTimer); mode1EvalTimer = null; }
             const points = Math.ceil(timeLeft * 10) + (currentMode === 'MODE2' ? 100 : 50);
             currentScore += points;
             scoreDisplay.textContent = currentScore;
@@ -493,33 +502,34 @@
         }
 
         function checkTargetCondition(target) {
-            const pressedIndices = recentInputs.map(i => i.index);
-            const hasIndex = (idx) => pressedIndices.includes(idx);
-            
-            const hasRange = (start, end) => {
-                for (let i = start; i <= end; i++) {
-                    if (!pressedIndices.includes(i)) return false;
-                }
-                return true;
+            const now = Date.now();
+            recentInputs = recentInputs.filter(item => now - item.time < TIME_WINDOW);
+            const pressedSet = new Set(recentInputs.map(i => i.index));
+
+            // 押された組み合わせが「ちょうど」expectedの集合と一致するときのみ true（余分なボタンが混ざっていたら不正解）
+            const isExact = (expected) => {
+                if (pressedSet.size !== expected.length) return false;
+                return expected.every((i) => pressedSet.has(i));
             };
+            const fullRange = (end) => Array.from({ length: end + 1 }, (_, i) => i);
 
             switch(target) {
-                case 1: return hasIndex(0);
-                case 2: return hasRange(0, 1);
-                case 3: return hasRange(0, 2);
-                case 4: return hasRange(0, 3);
-                case 5: 
-                    return hasRange(0, 4) || hasIndex(4);
+                case 1: return isExact([0]);
+                case 2: return isExact(fullRange(1));
+                case 3: return isExact(fullRange(2));
+                case 4: return isExact(fullRange(3));
+                case 5:
+                    return isExact(fullRange(4)) || isExact([4]);
                 case 6:
-                    return hasRange(0, 5) || (hasIndex(4) && hasIndex(5));
+                    return isExact(fullRange(5)) || isExact([4, 5]);
                 case 7:
-                    return hasRange(0, 6) || (hasIndex(4) && hasIndex(6));
+                    return isExact(fullRange(6)) || isExact([4, 6]);
                 case 8:
-                    return hasRange(0, 7) || (hasIndex(4) && hasIndex(7));
+                    return isExact(fullRange(7)) || isExact([4, 7]);
                 case 9:
-                    return hasRange(0, 8) || (hasIndex(4) && hasIndex(8));
+                    return isExact(fullRange(8)) || isExact([4, 8]);
                 case 10:
-                    return hasRange(0, 9) || (hasIndex(4) && hasIndex(9));
+                    return isExact(fullRange(9)) || isExact([4, 9]);
                 default:
                     return false;
             }
