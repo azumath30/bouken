@@ -1,0 +1,769 @@
+<!--1102-0625-->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arduino Button Game - 数字入力チャレンジ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400,500,600,700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col items-center justify-between p-4 md:p-8">
+
+    <header class="w-full max-w-4xl flex flex-col sm:flex-row items-center justify-between pb-6 border-b border-slate-800 gap-4">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                Arduino 10ボタン・数字入力ゲーム
+            </h1>
+            <p class="text-sm text-slate-400 mt-1">指定された数字をハードウェアボタンで素早く正確に入力せよ！</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span id="connectionStatus" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-950 text-red-400 border border-red-800">
+                <span class="w-2 h-2 mr-1.5 bg-red-500 rounded-full animate-pulse"></span>
+                未接続
+            </span>
+            <button id="connectBtn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-emerald-900/30 transition-all duration-200">
+                Arduino接続
+            </button>
+        </div>
+    </header>
+
+    <main class="w-full max-w-4xl my-6 grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow">
+        
+        <!-- Game Dashboard (Left 2 cols) -->
+        <div class="md:col-span-2 bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between shadow-xl">
+            
+            <!-- Game Mode Selection Menu -->
+            <div class="mb-4 bg-slate-950/80 p-3 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <span class="text-xs font-semibold text-slate-300">🎮 ゲームモード選択:</span>
+                <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+                    <button id="mode1Btn" class="flex-1 sm:flex-initial px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow transition-all">
+                        1〜10 単数モード
+                    </button>
+                    <button id="mode2Btn" class="flex-1 sm:flex-initial px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 transition-all">
+                        2桁チャレンジ (10〜99)
+                    </button>
+                    <button id="mode3Btn" class="flex-1 sm:flex-initial px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 transition-all">
+                        10は○と□
+                    </button>
+                    <button id="mode4Btn" class="flex-1 sm:flex-initial px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 transition-all">
+                        10は□と○
+                    </button>
+                </div>
+            </div>
+
+            <!-- Score & Status Header -->
+            <div class="flex justify-between items-center mb-4 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+                <div>
+                    <span class="text-xs text-slate-400 uppercase tracking-wider block">スコア</span>
+                    <span id="scoreDisplay" class="text-3xl font-extrabold text-emerald-400 font-mono">0</span>
+                </div>
+                <div class="text-center">
+                    <span class="text-xs text-slate-400 uppercase tracking-wider block">残り時間 / ステータス</span>
+                    <span id="gameTimer" class="text-xl font-bold text-cyan-400 font-mono">待機中</span>
+                </div>
+                <div class="text-right">
+                    <span class="text-xs text-slate-400 uppercase tracking-wider block">問題数</span>
+                    <span id="roundDisplay" class="text-xl font-bold text-slate-200 font-mono">0 / 10</span>
+                </div>
+            </div>
+
+            <!-- Target Number Display Box (Giant Typography filling space) -->
+            <div class="flex flex-col items-center justify-center py-6 bg-gradient-to-b from-slate-950/90 to-slate-900/50 rounded-2xl border border-slate-800 mb-4 relative overflow-hidden">
+                <span id="modeTitleBadge" class="text-xs text-emerald-400 uppercase tracking-widest mb-1 font-semibold">【1〜10 単数モード】</span>
+                <span class="text-[10px] text-slate-400 uppercase tracking-widest mb-1">お題の数字</span>
+                <div class="flex items-center gap-4">
+                    <div id="targetNumber" class="text-9xl sm:text-[11rem] leading-none font-black text-white tracking-tighter font-mono drop-shadow-[0_0_50px_rgba(52,211,153,0.6)] my-3">
+                        --
+                    </div>
+                    <!-- Korean pronunciation overlay on answer/timeout -->
+                    <div id="koreanBadge" class="hidden flex flex-col items-center bg-emerald-950/80 border border-emerald-500 rounded-2xl p-4 text-emerald-300 shadow-lg">
+                        <span class="text-xs uppercase tracking-wider opacity-75">한국어</span>
+                        <span id="koreanText" class="text-3xl sm:text-4xl font-black font-sans mt-1">--</span>
+                    </div>
+                </div>
+                <div id="targetHint" class="text-xs text-slate-400 mt-3 font-mono text-center px-4">
+                    「スタート」ボタンを押してゲームを開始してください
+                </div>
+            </div>
+
+            <!-- Controls & Button Grid Visualizer (Compact tighter borders) -->
+            <div class="mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-xs font-semibold text-slate-300">ボタン状態 (R0 〜 R9) - 緊密な小枠表示</span>
+                    <span class="text-[10px] text-slate-500">5個並び × 2列</span>
+                </div>
+                <!-- 2 rows x 5 cols compact grid -->
+                <div id="buttonGrid" class="grid grid-cols-5 gap-2 max-w-xs mx-auto">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Game Action Buttons -->
+            <div class="flex gap-3">
+                <button id="startBtn" class="flex-grow py-3 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-[0.98] text-white font-bold rounded-xl shadow-lg shadow-emerald-900/30 transition-all duration-200">
+                    ゲームスタート (10問ランダム)
+                </button>
+                <button id="simKeyboardBtn" class="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-xl border border-slate-700 transition-all" title="キーボードの0〜9キーでシミュレーションできます">
+                    ⌨️ キーボード
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between gap-6">
+            <div>
+                <!-- Ranking Top 3 Section -->
+                <h2 class="text-sm font-semibold text-slate-200 mb-2 flex items-center justify-between">
+                    <span class="flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+                        ハイスコア・トップ3
+                    </span>
+                    <button id="clearRankingBtn" class="text-[10px] text-slate-500 hover:text-slate-300 underline">リセット</button>
+                </h2>
+                <div id="rankingList" class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 font-mono text-xs text-slate-300 space-y-1.5 mb-6">
+                    <!-- Populated by JS -->
+                </div>
+
+                <h2 class="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    入力ルールについて
+                </h2>
+                <div id="rulesHintBox" class="space-y-1.5 text-xs text-slate-400 leading-relaxed bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+                    <!-- Dynamic rules text -->
+                </div>
+
+                <h2 class="text-sm font-semibold text-slate-200 mt-4 mb-2">受信・判定ログ</h2>
+                <div id="serialLog" class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-[11px] text-slate-300 h-28 overflow-y-auto flex flex-col gap-1 select-text">
+                    <span class="text-slate-600 italic">ここにログが表示されます...</span>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 text-[10px] text-slate-500 text-center">
+                Arduinoシリアル出力: <code class="text-slate-400 bg-slate-900 px-1 py-0.5 rounded">R0</code> 〜 <code class="text-slate-400 bg-slate-900 px-1 py-0.5 rounded">R9</code>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="w-full max-w-4xl text-center text-xs text-slate-500 pt-2 border-t border-slate-800">
+        <p>Arduino 10ボタンゲーム v1.8 - 韓国語音声読み上げ・2秒待機対応</p>
+    </footer>
+
+    <script>
+        // Serial variables
+        let port;
+        let reader;
+        let inputDone;
+        let inputStream;
+        let keepReading = false;
+
+        const connectBtn = document.getElementById('connectBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const buttonGrid = document.getElementById('buttonGrid');
+        const serialLog = document.getElementById('serialLog');
+        const startBtn = document.getElementById('startBtn');
+        const simKeyboardBtn = document.getElementById('simKeyboardBtn');
+        const targetNumberEl = document.getElementById('targetNumber');
+        const targetHintEl = document.getElementById('targetHint');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const gameTimerEl = document.getElementById('gameTimer');
+        const roundDisplay = document.getElementById('roundDisplay');
+        const rankingListEl = document.getElementById('rankingList');
+        const clearRankingBtn = document.getElementById('clearRankingBtn');
+        const mode1Btn = document.getElementById('mode1Btn');
+        const mode2Btn = document.getElementById('mode2Btn');
+        const mode3Btn = document.getElementById('mode3Btn');
+        const mode4Btn = document.getElementById('mode4Btn');
+        // 10の合成モード（MODE3: 10は○と□ / MODE4: 10は□と○）
+        const isTenMode = (mode) => mode === 'MODE3' || mode === 'MODE4';
+        const modeTitleBadge = document.getElementById('modeTitleBadge');
+        const rulesHintBox = document.getElementById('rulesHintBox');
+        const koreanBadge = document.getElementById('koreanBadge');
+        const koreanText = document.getElementById('koreanText');
+
+        let currentMode = 'MODE1';
+
+        let gameState = 'IDLE';
+        let currentScore = 0;
+        let currentRound = 0;
+        const maxRounds = 10;
+        let questionQueue = [];
+        let targetNum = 1;
+        let givenNum = 0; // 10の合成モード用: 問題文に表示する数字（答えではない方）
+        let currentDigitsInput = []; // 2桁モード用入力バッファ [十の位, 一の位]
+        let roundTimer = null;
+        let timeLeft = 0;
+
+        let recentInputs = [];
+        const TIME_WINDOW = 500;
+        let mode1EvalTimer = null;
+        const MODE1_SETTLE_MS = 200; // 連続押下が落ち着くのを待ってから判定する猶予時間
+
+        let rankings = JSON.parse(localStorage.getItem('arduino_game_rankings_v8') || '[]');
+
+        const buttonStates = {};
+        const BTN_IDLE_CLASS   = "px-2.5 py-1 flex items-center justify-center rounded border border-slate-700 bg-slate-900 text-slate-400 font-mono font-bold text-xs transition-all duration-150";
+        const BTN_ACTIVE_CLASS = "px-2.5 py-1 flex items-center justify-center rounded border border-emerald-400 bg-emerald-500 text-slate-950 font-mono font-bold text-xs scale-105 shadow-md shadow-emerald-500/50 transition-all duration-150";
+
+        // --- Korean number words translation ---
+        const koreanNumbers = [
+            "영", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구", "십",
+            "십일", "십이", "십삼", "십사", "십오", "십육", "십칠", "십팔", "십구", "이십",
+            "삼십", "사십", "오십", "육십", "칠십", "팔십", "구십"
+        ];
+
+        function getKoreanWord(n) {
+            if (n >= 0 && n <= 10) return koreanNumbers[n];
+            if (n > 10 && n < 100) {
+                const tens = Math.floor(n / 10);
+                const units = n % 10;
+                let tensStr = (tens === 1) ? "십" : koreanNumbers[tens] + "십";
+                let unitsStr = (units === 0) ? "" : koreanNumbers[units];
+                return tensStr + unitsStr;
+            }
+            return n.toString();
+        }
+
+        // --- Korean Voice Speech Synthesis ---
+        function speakKorean(text) {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ko-KR';
+            utterance.rate = 1.0;
+            
+            const voices = window.speechSynthesis.getVoices();
+            const koVoice = voices.find(v => v.lang.includes('ko') && (v.name.includes('Yuna') || v.name.includes('Heami') || v.name.includes('Female') || v.name.includes('Google')));
+            if (koVoice) {
+                utterance.voice = koVoice;
+            }
+            window.speechSynthesis.speak(utterance);
+        }
+
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                window.speechSynthesis.getVoices();
+            };
+        }
+
+        function setGameMode(mode) {
+            if (gameState === 'PLAYING') return;
+            currentMode = mode;
+            const inactiveClass = "flex-1 sm:flex-initial px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg border border-slate-700 transition-all";
+            mode1Btn.className = inactiveClass;
+            mode2Btn.className = inactiveClass;
+            mode3Btn.className = inactiveClass;
+            mode4Btn.className = inactiveClass;
+            if (mode === 'MODE1') {
+                mode1Btn.className = "flex-1 sm:flex-initial px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg shadow transition-all";
+                modeTitleBadge.textContent = "【1〜10 単数モード】";
+                updateRulesHint(1);
+            } else if (mode === 'MODE2') {
+                mode2Btn.className = "flex-1 sm:flex-initial px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-lg shadow transition-all";
+                modeTitleBadge.textContent = "【2桁チャレンジモード (10〜99)】";
+                updateRulesHint(2);
+            } else if (mode === 'MODE3') {
+                mode3Btn.className = "flex-1 sm:flex-initial px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg shadow transition-all";
+                modeTitleBadge.textContent = "【10は○と□ モード】";
+                updateRulesHint(3);
+            } else {
+                mode4Btn.className = "flex-1 sm:flex-initial px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg shadow transition-all";
+                modeTitleBadge.textContent = "【10は□と○ モード】";
+                updateRulesHint(4);
+            }
+        }
+
+        function updateRulesHint(mode) {
+            if (mode === 1) {
+                rulesHintBox.innerHTML = `
+                    <p><strong class="text-slate-200">1〜4:</strong> R0, R0+R1... (順次)</p>
+                    <p><strong class="text-slate-200">5:</strong> R0〜R4同時 または <span class="text-emerald-400">R4単体</span>でも可</p>
+                    <p><strong class="text-slate-200">6〜9:</strong> フルセット または <span class="text-emerald-400">ショートカット（R4→R5など0.5秒以内 / 逆順も可）</span></p>
+                    <p><strong class="text-slate-200">10:</strong> フルセット または <span class="text-emerald-400">R4 + R9</span> でクリア！</p>
+                `;
+            } else if (mode === 3 || mode === 4) {
+                const example = mode === 3
+                    ? `「10は<span class="text-amber-400">7</span>と□」`
+                    : `「10は□と<span class="text-amber-400">7</span>」`;
+                const position = mode === 3 ? '「10は」の次の数字' : '最後の数字';
+                rulesHintBox.innerHTML = `
+                    <p><strong class="text-slate-200">${mode === 3 ? '10は○と□' : '10は□と○'} モード:</strong></p>
+                    <p>${example}のように出題されます。<span class="text-emerald-400">□に入る数字</span>を入力してください。</p>
+                    <p>${position}は <span class="text-cyan-400">1〜9</span> がすべて1回ずつ登場！（全10問）</p>
+                    <p><strong class="text-slate-200">入力方法:</strong> 単数モードと同じ（1〜4は R0〜、5は R4単体も可、6〜9は R4→R5〜R8 も可）。</p>
+                `;
+            } else {
+                rulesHintBox.innerHTML = `
+                    <p><strong class="text-slate-200">2桁モードルール (10〜99):</strong></p>
+                    <p>数字Nを入力するには <span class="text-emerald-400">R0〜R(N-1) をまとめて押す</span>（例: 4なら R0,R1,R2,R3 を0.5秒以内に）。</p>
+                    <p>十の位は <span class="text-cyan-400">1〜9</span>（0除外）、一の位は <span class="text-cyan-400">1〜9</span> がすべて1回ずつ登場！</p>
+                    <p><strong class="text-slate-200">入力ルール:</strong> まず十の位のボタン群を押し、次に一の位のボタン群を押してください。</p>
+                `;
+            }
+        }
+
+        mode1Btn.addEventListener('click', () => setGameMode('MODE1'));
+        mode2Btn.addEventListener('click', () => setGameMode('MODE2'));
+        mode3Btn.addEventListener('click', () => setGameMode('MODE3'));
+        mode4Btn.addEventListener('click', () => setGameMode('MODE4'));
+
+        function initButtonGrid() {
+            buttonGrid.innerHTML = '';
+            for (let i = 0; i < 10; i++) {
+                const btn = document.createElement('div');
+                btn.id = `btn-R${i}`;
+                btn.className = BTN_IDLE_CLASS;
+                btn.textContent = `R${i}`;
+                buttonGrid.appendChild(btn);
+                buttonStates[i] = btn;
+            }
+        }
+
+        function updateButtonUI(key, active) {
+            const idx = parseInt(key.replace('R', ''), 10);
+            const btn = buttonStates[idx];
+            if (!btn) return;
+            btn.className = active ? BTN_ACTIVE_CLASS : BTN_IDLE_CLASS;
+        }
+
+        function appendLog(message, isError = false) {
+            const placeholder = serialLog.querySelector('.italic');
+            if (placeholder) placeholder.remove();
+            const line = document.createElement('div');
+            line.className = isError ? 'text-red-400' : 'text-slate-300';
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            line.textContent = `[${time}] ${message}`;
+            serialLog.appendChild(line);
+            serialLog.scrollTop = serialLog.scrollHeight;
+        }
+
+        function startNewGame() {
+            currentScore = 0;
+            currentRound = 0;
+            scoreDisplay.textContent = currentScore;
+            gameState = 'PLAYING';
+            startBtn.textContent = 'ゲーム中...';
+            startBtn.disabled = true;
+            mode1Btn.disabled = true;
+            mode2Btn.disabled = true;
+            mode3Btn.disabled = true;
+            mode4Btn.disabled = true;
+            koreanBadge.classList.add('hidden');
+
+            if (isTenMode(currentMode)) {
+                // 1〜9を必ず1回ずつ + ランダムに1つ追加して10問
+                let givens = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+                givens.push(Math.floor(Math.random() * 9) + 1);
+                for (let i = givens.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [givens[i], givens[j]] = [givens[j], givens[i]];
+                }
+                questionQueue = givens;
+                appendLog(currentMode === 'MODE3'
+                    ? `10は○と□モード開始！ 出題順(10は○と): ${questionQueue.join(', ')}`
+                    : `10は□と○モード開始！ 出題順(10は□と○): ${questionQueue.join(', ')}`);
+            } else if (currentMode === 'MODE1') {
+                let nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+                for (let i = nums.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [nums[i], nums[j]] = [nums[j], nums[i]];
+                }
+                questionQueue = nums;
+                appendLog(`1〜10モード開始！ 出題順: ${questionQueue.join(', ')}`);
+            } else {
+                let units = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+                let extraUnit = Math.floor(Math.random() * 9) + 1;
+                units.push(extraUnit);
+                
+                for (let i = units.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [units[i], units[j]] = [units[j], units[i]];
+                }
+
+                questionQueue = units.map(u => {
+                    const tens = Math.floor(Math.random() * 9) + 1;
+                    return tens * 10 + u;
+                });
+                appendLog(`2桁モード開始！ 出題順: ${questionQueue.join(', ')}`);
+            }
+
+            currentDigitsInput = [];
+            recentInputs = [];
+            nextRound();
+        }
+
+        function nextRound() {
+            currentRound++;
+            if (currentRound > maxRounds) {
+                endGame();
+                return;
+            }
+            roundDisplay.textContent = `${currentRound} / ${maxRounds}`;
+            if (isTenMode(currentMode)) {
+                givenNum = questionQueue[currentRound - 1];
+                targetNum = 10 - givenNum;
+                const box = '<span class="text-amber-400">□</span>';
+                const question = currentMode === 'MODE3' ? `10は${givenNum}と${box}` : `10は${box}と${givenNum}`;
+                targetNumberEl.innerHTML = `<span class="text-6xl sm:text-8xl">${question}</span>`;
+                targetHintEl.textContent = "ヒント: 10になるように □ に入る数字を入力しよう";
+            } else {
+                targetNum = questionQueue[currentRound - 1];
+                targetNumberEl.textContent = targetNum;
+                targetHintEl.textContent = getHintText(targetNum, currentMode);
+            }
+            currentDigitsInput = [];
+            recentInputs = [];
+            if (mode1EvalTimer) { clearTimeout(mode1EvalTimer); mode1EvalTimer = null; }
+            koreanBadge.classList.add('hidden');
+
+            // 10の合成モードでは答えを言わないよう、表示中の数字を読み上げる
+            speakKorean(getKoreanWord(isTenMode(currentMode) ? givenNum : targetNum));
+
+            timeLeft = currentMode === 'MODE2' ? 12.0 : isTenMode(currentMode) ? 8.0 : 5.0;
+            gameTimerEl.textContent = `${timeLeft.toFixed(1)}秒`;
+            
+            if (roundTimer) clearInterval(roundTimer);
+            roundTimer = setInterval(() => {
+                timeLeft -= 0.1;
+                if (timeLeft <= 0) {
+                    gameTimerEl.textContent = '時間切れ!';
+                    appendLog(`時間切れ! (お題: ${targetNum})`, true);
+                    speakKorean("오답");
+                    clearInterval(roundTimer);
+
+                    // Show Korean pronunciation badge and wait 2 seconds before next round
+                    koreanText.textContent = getKoreanWord(targetNum);
+                    koreanBadge.classList.remove('hidden');
+                    setTimeout(nextRound, 2000);
+                } else {
+                    gameTimerEl.textContent = `${timeLeft.toFixed(1)}秒`;
+                }
+            }, 100);
+        }
+
+        function getHintText(n, mode) {
+            if (mode === 'MODE1') {
+                switch(n) {
+                    case 1: return "ヒント: R0 を押せ (ボタン1)";
+                    case 2: return "ヒント: R0, R1 を順にまたは同時に";
+                    case 3: return "ヒント: R0〜R2 を入力";
+                    case 4: return "ヒント: R0〜R3 を入力";
+                    case 5: return "ヒント: R0〜R4 または R4単体でもOK";
+                    case 6: return "ヒント: R0〜R5 または R4→R5 (0.5秒以内/逆順も可)";
+                    case 7: return "ヒント: フルセット または R4→R6 (0.5秒以内)";
+                    case 8: return "ヒント: フルセット または R4→R7 (0.5秒以内)";
+                    case 9: return "ヒント: フルセット または R4→R8 (0.5秒以内)";
+                    case 10: return "ヒント: フルセット または R4 + R9 でOK！";
+                    default: return "";
+                }
+            } else {
+                const tens = Math.floor(n / 10);
+                const units = n % 10;
+                return `ヒント: 十の位「${tens}」→ R0〜R${tens - 1} をまとめて押す , 一の位「${units}」→ R0〜R${units - 1} をまとめて押す`;
+            }
+        }
+
+        function handleButtonPress(rIndex) {
+            const key = `R${rIndex}`;
+            appendLog(`ボタン検知: ${key} (ボタン${rIndex + 1})`);
+            
+            updateButtonUI(key, true);
+            setTimeout(() => updateButtonUI(key, false), 250);
+
+            // ルール: ボタン1->R0 (数字の1), ボタン2->R1 (数字の2) ... ボタン10->R9 (数字の10または0)
+            let spokenNum = rIndex + 1;
+            if (spokenNum === 10) spokenNum = 0;
+            speakKorean(getKoreanWord(spokenNum));
+
+            if (gameState !== 'PLAYING') return;
+
+            if (currentMode === 'MODE1' || isTenMode(currentMode)) {
+                const now = Date.now();
+                recentInputs = recentInputs.filter(item => now - item.time < TIME_WINDOW);
+                recentInputs.push({ index: rIndex, time: now });
+
+                // 連続押下が落ち着くまで判定を遅らせる（例: 8を10ボタン全押しの途中で誤判定しないように）
+                if (mode1EvalTimer) clearTimeout(mode1EvalTimer);
+                mode1EvalTimer = setTimeout(() => {
+                    mode1EvalTimer = null;
+                    if (checkTargetCondition(targetNum)) {
+                        speakKorean("정답");
+                        onRoundSuccess();
+                    }
+                }, MODE1_SETTLE_MS);
+            } else {
+                // 2桁モード: 数字N は R0〜R(N-1) をまとめて(TIME_WINDOW以内に)押す方式
+                const now = Date.now();
+                recentInputs = recentInputs.filter(item => now - item.time < TIME_WINDOW);
+                recentInputs.push({ index: rIndex, time: now });
+                const pressedIndices = recentInputs.map(item => item.index);
+
+                const expectedTensDigit = Math.floor(targetNum / 10);
+                const expectedUnitsDigit = targetNum % 10;
+
+                if (currentDigitsInput.length === 0) {
+                    const neededMax = expectedTensDigit - 1;
+                    if (rIndex > neededMax) {
+                        appendLog(`十の位ミス (入力:R${rIndex}, 必要ボタン:R0〜R${neededMax})`, true);
+                        speakKorean("오답");
+                        recentInputs = [];
+                    } else if (hasFullRange(pressedIndices, 0, neededMax)) {
+                        appendLog(`十の位一致 (R0〜R${neededMax} = 数字${expectedTensDigit})。次の一の位を入力！`);
+                        targetHintEl.textContent = `十の位OK! 次に一の位「${expectedUnitsDigit}」を入力`;
+                        currentDigitsInput.push('tens');
+                        recentInputs = [];
+                    }
+                } else if (currentDigitsInput.length === 1) {
+                    const neededMax = expectedUnitsDigit - 1;
+                    if (rIndex > neededMax) {
+                        appendLog(`一の位ミス (入力:R${rIndex}, 必要ボタン:R0〜R${neededMax})。最初からやり直し`, true);
+                        speakKorean("오답");
+                        currentDigitsInput = [];
+                        recentInputs = [];
+                        targetHintEl.textContent = `やり直し: まず十の位「${expectedTensDigit}」を入力`;
+                    } else if (hasFullRange(pressedIndices, 0, neededMax)) {
+                        currentDigitsInput.push('units');
+                        speakKorean("정답");
+                        recentInputs = [];
+                        onRoundSuccess();
+                    }
+                }
+            }
+        }
+
+        function onRoundSuccess() {
+            clearInterval(roundTimer);
+            if (mode1EvalTimer) { clearTimeout(mode1EvalTimer); mode1EvalTimer = null; }
+            const points = Math.ceil(timeLeft * 10) + (currentMode === 'MODE2' ? 100 : isTenMode(currentMode) ? 70 : 50);
+            currentScore += points;
+            scoreDisplay.textContent = currentScore;
+            targetNumberEl.textContent = `正解!`;
+            appendLog(currentMode === 'MODE3' ? `🎉 正解！ 10は${givenNum}と${targetNum}`
+                : currentMode === 'MODE4' ? `🎉 正解！ 10は${targetNum}と${givenNum}`
+                : `🎉 正解！ お題: ${targetNum}`);
+
+            // Show Korean pronunciation badge and wait 2 seconds before next round
+            koreanText.textContent = getKoreanWord(targetNum);
+            koreanBadge.classList.remove('hidden');
+
+            recentInputs = [];
+            currentDigitsInput = [];
+            
+            setTimeout(nextRound, 2000);
+        }
+
+        function hasFullRange(pressedIndices, start, end) {
+            for (let i = start; i <= end; i++) {
+                if (!pressedIndices.includes(i)) return false;
+            }
+            return true;
+        }
+
+        function checkTargetCondition(target) {
+            const now = Date.now();
+            recentInputs = recentInputs.filter(item => now - item.time < TIME_WINDOW);
+            const pressedSet = new Set(recentInputs.map(i => i.index));
+
+            // 押された組み合わせが「ちょうど」expectedの集合と一致するときのみ true（余分なボタンが混ざっていたら不正解）
+            const isExact = (expected) => {
+                if (pressedSet.size !== expected.length) return false;
+                return expected.every((i) => pressedSet.has(i));
+            };
+            const fullRange = (end) => Array.from({ length: end + 1 }, (_, i) => i);
+
+            switch(target) {
+                case 1: return isExact([0]);
+                case 2: return isExact(fullRange(1));
+                case 3: return isExact(fullRange(2));
+                case 4: return isExact(fullRange(3));
+                case 5:
+                    return isExact(fullRange(4)) || isExact([4]);
+                case 6:
+                    return isExact(fullRange(5)) || isExact([4, 5]);
+                case 7:
+                    return isExact(fullRange(6)) || isExact([4, 6]);
+                case 8:
+                    return isExact(fullRange(7)) || isExact([4, 7]);
+                case 9:
+                    return isExact(fullRange(8)) || isExact([4, 8]);
+                case 10:
+                    return isExact(fullRange(9)) || isExact([4, 9]);
+                default:
+                    return false;
+            }
+        }
+
+        function endGame() {
+            gameState = 'IDLE';
+            targetNumberEl.textContent = 'END';
+            targetHintEl.textContent = `最終スコア: ${currentScore} 点`;
+            gameTimerEl.textContent = '終了';
+            startBtn.textContent = 'もう一度プレイ';
+            startBtn.disabled = false;
+            mode1Btn.disabled = false;
+            mode2Btn.disabled = false;
+            mode3Btn.disabled = false;
+            mode4Btn.disabled = false;
+            koreanBadge.classList.add('hidden');
+            appendLog(`ゲーム終了！ 最終スコア: ${currentScore}`);
+
+            saveRanking(currentScore);
+        }
+
+        function saveRanking(score) {
+            const modeName = currentMode === 'MODE1' ? '[単数]' : currentMode === 'MODE2' ? '[2桁]' : currentMode === 'MODE3' ? '[10は○と□]' : '[10は□と○]';
+            const dateStr = new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            rankings.push({ score: score, mode: modeName, date: dateStr });
+            rankings.sort((a, b) => b.score - a.score);
+            rankings = rankings.slice(0, 3);
+            localStorage.setItem('arduino_game_rankings_v8', JSON.stringify(rankings));
+            renderRanking();
+        }
+
+        function renderRanking() {
+            rankingListEl.innerHTML = '';
+            if (rankings.length === 0) {
+                rankingListEl.innerHTML = '<span class="text-slate-600 italic">まだ記録がありません</span>';
+                return;
+            }
+            rankings.forEach((item, index) => {
+                const medals = ['🥇', '🥈', '🥉'];
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center py-1 border-b border-slate-900 last:border-0";
+                div.innerHTML = `
+                    <span class="font-bold text-slate-200">${medals[index]} ${index + 1}位 <span class="text-[10px] text-cyan-400">${item.mode || ''}</span></span>
+                    <span class="text-emerald-400 font-extrabold">${item.score}点</span>
+                    <span class="text-[9px] text-slate-500">${item.date}</span>
+                `;
+                rankingListEl.appendChild(div);
+            });
+        }
+
+        async function connectSerial() {
+            if (!('serial' in navigator)) {
+                appendLog('お使いのブラウザはWeb Serial APIに対応していません。', true);
+                return;
+            }
+
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 9600 });
+
+                keepReading = true;
+                connectStatusConnected();
+                appendLog('シリアルポート接続成功 (9600 baud)');
+
+                const textDecoder = new TextDecoderStream();
+                inputDone = port.readable.pipeTo(textDecoder.writable);
+                inputStream = textDecoder.readable;
+                reader = inputStream.getReader();
+
+                readLoop();
+
+            } catch (error) {
+                console.error('接続エラー:', error);
+                appendLog(`接続エラー: ${error.message}`, true);
+                connectStatusDisconnected();
+            }
+        }
+
+        function handleSerialData(line) {
+            line = line.trim();
+            if (!line) return;
+            const match = line.match(/^R(\d)$/);
+            if (!match) {
+                appendLog(`不明なデータ: ${line}`, true);
+                return;
+            }
+            handleButtonPress(parseInt(match[1], 10));
+        }
+
+        async function readLoop() {
+            let buffer = '';
+            try {
+                while (keepReading) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    if (value) {
+                        buffer += value;
+                        let lines = buffer.split('\n');
+                        buffer = lines.pop();
+                        for (let line of lines) {
+                            handleSerialData(line);
+                        }
+                    }
+                }
+            } catch (error) {
+                appendLog(`読み取りエラー: ${error.message}`, true);
+            } finally {
+                if (reader) reader.releaseLock();
+            }
+        }
+
+        async function disconnectSerial() {
+            keepReading = false;
+            try {
+                if (reader) await reader.cancel();
+                if (inputDone) await inputDone.catch(() => {});
+                if (port) await port.close();
+            } catch (error) {
+                console.error('切断エラー:', error);
+            }
+            connectStatusDisconnected();
+            appendLog('シリアルポート切断');
+        }
+
+        function connectStatusConnected() {
+            connectionStatus.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-950 text-emerald-400 border border-emerald-800";
+            connectionStatus.innerHTML = '<span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full"></span>接続中';
+            connectBtn.textContent = '切断する';
+            connectBtn.className = "px-4 py-2 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-red-900/30 transition-all duration-200";
+        }
+
+        function connectStatusDisconnected() {
+            connectionStatus.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-950 text-red-400 border border-red-800";
+            connectionStatus.innerHTML = '<span class="w-2 h-2 mr-1.5 bg-red-500 rounded-full"></span>未接続';
+            connectBtn.textContent = 'Arduino接続';
+            connectBtn.className = "px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white text-sm font-medium rounded-xl shadow-lg shadow-emerald-900/30 transition-all duration-200";
+        }
+
+        connectBtn.addEventListener('click', () => {
+            if (port && port.readable && keepReading) {
+                disconnectSerial();
+            } else {
+                connectSerial();
+            }
+        });
+
+        startBtn.addEventListener('click', startNewGame);
+
+        clearRankingBtn.addEventListener('click', () => {
+            if (confirm('ランキング記録をリセットしますか？')) {
+                rankings = [];
+                localStorage.removeItem('arduino_game_rankings_v8');
+                renderRanking();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key >= '0' && e.key <= '9') {
+                const idx = parseInt(e.key, 10);
+                handleButtonPress(idx);
+            }
+        });
+
+        simKeyboardBtn.addEventListener('click', () => {
+            alert('キーボードの「0」〜「9」キーを押すと、それぞれ R0〜R9 の入力をシミュレートできます！');
+        });
+
+        window.onload = () => {
+            initButtonGrid();
+            setGameMode('MODE1');
+            renderRanking();
+        };
+    </script>
+</body>
+</html>
